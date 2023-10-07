@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- 页面meta -->
+
+    <meta charset="utf-8">
+
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+    <title>晋商资本数据信息界面</title>
+
+    <meta content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" name="viewport">
+
+
+    <!-- 引入样式 -->
+
+    <link rel="stylesheet" href="../plugins/elementui/index.css">
+
+    <link rel="stylesheet" href="../plugins/font-awesome/css/font-awesome.min.css">
+
+    <link rel="stylesheet" href="../css/style.css">
+
+    <!-- js   -->
+
+    <script src="../js/vue.js"></script>
+
+    <script src="../plugins/elementui/index.js"></script>
+
+    <script type="text/javascript" src="../js/jquery.min.js"></script>
+
+    <script src="../js/axios-0.18.0.js"></script>
+</head>
+
+<body class="hold-transition">
+
+<div id="app">
+
+    <div class="content-header">
+
+        <h1>公司信息</h1>
+
+    </div>
+
+    <div class="app-container">
+
+        <div class="box">
+
+            <div class="filter-container">
+
+                <el-input placeholder="公司编号" v-model="pagination.cid" style="width: 200px;"
+                          class="filter-item"></el-input>
+                <el-input placeholder="公司名称" v-model="pagination.companyName" style="width: 200px;"
+                          class="filter-item"></el-input>
+                <el-button @click="getAll()" class="dalfBut">查询</el-button>
+                <el-button type="primary" class="butT" @click="handleCreate()">新建</el-button>
+                <el-button type="primary" @click="downloadExcel">下载模板</el-button>
+                <br>
+
+                <!--上传excel-->
+                <div style="float: right">
+                    <!-- action="http://localhost/jinshang/upload"   -->
+                    <el-upload
+                            class="upload-demo"
+                            multiple
+                            action="http://localhost/jinshang/upload"
+                            :file-list="fileList"
+                            :on-success="uploadSuccess"
+                            :before-upload="beforeAvatarUpload">
+                        <!--<p class="el-icon-upload"></p>
+                        <div class="el-upload__text">将文件拖到此处，或<em>点击上传</em></div>
+                        <div class="el-upload__tip" slot="tip">只能上传jpg/png/txt/pdf/excel文件，且不超过2MB</div>-->
+                        <!--                        <el-button slot="trigger" size="small" type="primary">上传Excel附件</el-button>-->
+                        <el-button slot="trigger" size="small" type="primary">上传Excel附件</el-button>
+
+                    </el-upload>
+                </div>
+            </div>
+
+            <el-table size="medium" current-row-key="id" :data="dataList" stripe highlight-current-row>
+
+                <el-table-column type="index" align="center" label="序号"></el-table-column>
+
+                <el-table-column prop="cid" label="公司编号" align="center"></el-table-column>
+
+                <el-table-column prop="companyName" label="公司名称" align="center"></el-table-column>
+
+                <el-table-column prop="information" label="公司简介" align="center"></el-table-column>
+
+                <el-table-column label="操作" align="center">
+
+                    <template slot-scope="scope">
+
+                        <el-button type="primary" size="mini" @click="handleShow(scope.row)">查看</el-button>
+
+                        <el-button type="primary" size="mini" @click="handleUpdate(scope.row)">编辑</el-button>
+
+                        <el-button type="primary" size="mini" @click="downloadExcelByCid(scope.row)">下载</el-button>
+
+                        <el-button type="danger" size="mini" @click="handleDelete(scope.row)">删除</el-button>
+
+                    </template>
+
+                </el-table-column>
+
+            </el-table>
+
+            <!--分页组件-->
+            <div class="pagination-container">
+
+                <el-pagination
+                        class="pagiantion"
+
+                        @current-change="handleCurrentChange"
+
+                        :current-page="pagination.currentPage"
+
+                        :page-size="pagination.pageSize"
+
+                        layout="total, prev, pager, next, jumper"
+
+                        :total="pagination.total">
+
+                </el-pagination>
+
+
+                <!-- 编辑标签弹层 -->
+
+                <div class="add-form">
+
+                    <el-dialog title="编辑操作" :visible.sync="dialogFormVisible4Edit">
+
+                        <el-form ref="dataEditForm" :model="formData" :rules="rules" label-position="right"
+                                 label-width="100px">
+
+                            <el-row>
+
+                                <el-col :span="12">
+
+                                    <el-form-item label="公司名称" prop="name">
+
+                                        <el-input v-model="formData.companyName"/>
+
+                                    </el-form-item>
+
+                                </el-col>
+
+                            </el-row>
+
+                            <el-row>
+
+                                <el-col :span="24">
+
+                                    <el-form-item label="公司简介" prop="information">
+
+                                        <el-input v-model="formData.information" type="textarea"></el-input>
+
+                                    </el-form-item>
+
+                                </el-col>
+
+                            </el-row>
+
+                        </el-form>
+
+                        <div slot="footer" class="dialog-footer">
+
+                            <el-button @click="cancel()">取消</el-button>
+
+                            <el-button type="primary" @click="handleEdit()">确定</el-button>
+
+                        </div>
+
+                    </el-dialog>
+
+                </div>
+
+                <!-- 新增标签弹层 -->
+
+                <div class="add-form">
+
+                    <el-dialog title="新增公司" :visible.sync="dialogFormVisible">
+
+                        <el-form ref="dataAddForm" :model="formData" :rules="rules" label-position="right"
+                                 label-width="100px">
+
+                            <el-row>
+
+                                <el-col :span="12">
+
+                                    <el-form-item label="公司编号" prop="cid">
+
+                                        <el-input v-model="formData.cid"/>
+
+                                    </el-form-item>
+
+                                </el-col>
+
+                                <el-col :span="12">
+
+                                    <el-form-item label="公司名称" prop="companyName">
+
+                                        <el-input v-model="formData.companyName"/>
+
+                                    </el-form-item>
+
+                                </el-col>
+
+                            </el-row>
+
+
+                            <el-row>
+
+                                <el-col :span="24">
+
+                                    <el-form-item label="公司简介" prop="information">
+
+                                        <el-input v-model="formData.information" type="textarea"></el-input>
+
+                                    </el-form-item>
+
+                                </el-col>
+
+                            </el-row>
+
+                        </el-form>
+
+                        <div slot="footer" class="dialog-footer">
+
+                            <el-button @click="cancel()">取消</el-button>
+
+                            <el-button type="primary" @click="handleAdd()">确定</el-button>
+
+                        </div>
+
+                    </el-dialog>
+
+                </div>
+
+                <!-- 信息查看弹层 -->
+
+                <div class="add-form">
+
+                    <el-dialog title="现金流信息" :visible.sync="dialogInformationVisible">
+                        <el-table size="big" current-row-key="id" :data="dataListInformation" stripe
+                                  highlight-current-row>
+                            <el-table-column type="index" align="center" label="序号"></el-table-column>
+                            <el-table-column prop="item" label="项目名称" align="center"></el-table-column>
+                            <el-table-column prop="num" label="行次" align="center"></el-table-column>
+                            <el-table-column prop="amount" label="金额" align="center"></el-table-column>
+                            <el-table-column label="操作" align="center">
+                                <template slot-scope="scope">
+                                    <el-button type="primary" size="mini" @click="handleInformationUpdate(scope.row)">
+                                        编辑
+                                    </el-button>
+                                    <el-button type="danger" size="mini" @click="handleInformationDelete(scope.row)">
+                                        删除
+                                    </el-button>
+                                </template>
+                            </el-table-column>
+                        </el-table>
+                        <div slot="footer" class="dialog-footer">
+
+                            <el-button @click="cancel1()">关闭</el-button>
+
+                        </div>
+                    </el-dialog>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</body>
+<script>
+    var vue = new Vue({
+        el: "#app",
+        data: {
+            dataList: [],//当前要展示的数据
+            dataListInformation: [],//信息展示的数据
+            dialogFormVisible: false,//添加表单是否可见
+            dialogFormVisible4Edit: false,//编辑页,默认不可见
+            dialogInformationVisible: false,//查看页，默认不可见
+            formData: {},//表单数据
+            rules: {//校验规则
+                type: [{required: true, message: '图书类别为必填项', trigger: 'blur'}],
+                name: [{required: true, message: '图书名称为必填项', trigger: 'blur'}]
+            },
+            pagination: {//分页相关模型数据
+                currentPage: 1,//当前页码
+                pageSize: 10,//每页显示的记录数
+                total: 0,//总记录数
+                cid: "",
+                companyName: ""
+            }
+        },
+
+        //钩子函数，VUE对象初始化完成后自动执行
+        created() {
+            //调用查询全部数据的操作
+            this.getAll();
+        },
+
+        methods: {
+            getAll() {
+                param = "?cid=" + this.pagination.cid;
+                param += "&companyName=" + this.pagination.companyName;
+
+                axios.get("/jinshang/" + this.pagination.currentPage + "/" + this.pagination.pageSize + param).then((res) => {
+                    // this.dataList = res.data;
+                    console.log(res);
+                    this.pagination.pageSize = res.data.data.size;
+                    this.pagination.currentPage = res.data.data.current;
+                    this.pagination.total = res.data.data.total;
+
+                    this.dataList = res.data.data.records;
+                });
+            },
+            downloadExcel() {
+                axios.get("/jinshang/download", {responseType: 'blob'})
+                    .then(response => {
+                        console.log(response);
+                        const url = window.URL.createObjectURL(new Blob([response.data]));
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.setAttribute('download', '模板.xlsx');
+                        document.body.appendChild(link);
+                        link.click();
+                    }).catch(error => {
+                    console.error(error);
+                });
+            },
+            downloadExcelByCid(row) {
+                axios.get("/jinshang/download/" + row.cid, {responseType: 'blob'})
+                    .then(response => {
+                        console.log(response);
+                        const url = window.URL.createObjectURL(new Blob([response.data]));
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.setAttribute('download', 'Datafile.xlsx');
+                        document.body.appendChild(link);
+                        link.click();
+                    }).catch(error => {
+                    console.error(error);
+                });
+            },
+            handleDelete(row) {
+                // console.log(row);
+                this.$confirm("此操作永久删除当前信息，是否继续？", "提示", {type: "info"}).then(() => {
+                    axios.delete("/jinshang/" + row.cid).then((res) => {
+                        console.log(res);
+                        if (res.data.code == 510) {
+                            this.$message.success("删除成功");
+                        } else {
+                            this.$message.error(res.data.msg);
+                        }
+                    }).finally(() => {
+                        //2.重新加载数据
+                        this.getAll();
+                    });
+                }).catch(() => {
+                    this.$message.info("取消操作");
+                });
+            },
+            //编辑页面
+            handleUpdate(row) {
+                this.resetForm();
+                axios.get("/jinshang/" + row.cid).then((res) => {
+                    console.log(res)
+                    if (res.data.code == 530) {
+                        this.dialogFormVisible4Edit = true;
+                        this.formData = res.data.data;
+                    } else {
+                        this.$message.error(res.data.msg);
+                    }
+                })
+            },
+            //查看信息
+            handleShow(row) {
+                this.dialogInformationVisible = true;
+                axios.get("/jinshang/information/" + row.cid).then((res) => {
+                    console.log(res);
+                    this.dataListInformation = res.data.data;
+                })
+            },
+            //确定修改
+            handleEdit() {
+                axios.put("/jinshang", this.formData).then((res) => {
+                    if (res.data.code == 520) {
+                        this.dialogFormVisible4Edit = false;
+                        this.$message.success("修改成功");
+                    } else {
+                        this.dialogFormVisible4Edit = false;
+                        this.$message.error(res.data.msg);
+                    }
+                }).finally(() => {
+                    this.resetForm();
+                    //2.重新加载数据
+                    this.getAll();
+                });
+            },
+
+            //重置表单
+            resetForm() {
+                this.formData = {};
+            },
+
+            //取消
+            cancel() {
+                this.dialogFormVisible4Edit = false;
+                this.dialogFormVisible = false;
+                this.$message.info("当前操作取消");
+            },
+            cancel1(){
+                this.dialogInformationVisible = false;
+            },
+            //弹出添加窗口
+            handleCreate() {
+                this.dialogFormVisible = true;
+                this.resetForm();
+            },
+            //添加
+            handleAdd() {
+                axios.post("/jinshang", this.formData).then((res) => {
+                    if (res.data.code == 500) {
+                        this.dialogFormVisible = false;
+                        this.$message.success("添加成功");
+                    } else {
+                        this.dialogFormVisible = false;
+                        this.$message.success(res.data.msg);
+                    }
+                }).finally(() => {
+                    this.resetForm();
+                    //2.重新加载数据
+                    this.getAll();
+                });
+            },
+            //切换页码
+            handleCurrentChange(currentPage) {
+                //修改页码值为当前选中的页码值
+                this.pagination.currentPage = currentPage;
+                //执行查询
+                this.getAll();
+            },
+            uploadExcel() {
+                axios.post("/jinshang/upload", {responseType: 'blob'}).then(res => {
+                    console.log(res);
+                    if (res.data.code == 601) {
+                        this.$message.error(res.data.msg);
+                    }
+                })
+            },
+            //上传文件前判断文件类型
+            beforeAvatarUpload(file) {
+                // console.log(response)
+                const extension1 = file.name.split(".")[1] === "xlsx";
+                const extension2 = file.name.split(".")[1] === "xls";
+                if (!extension1 && !extension2) {
+                    this.$message.error("上传的文件只能是xls或者xlsx格式")
+                }
+                return extension1 || extension2;
+            },
+            uploadSuccess(response) {
+                console.log(response);
+                if (response.code == 601) {
+                    this.$message.error(response.msg);
+                }
+            }
+
+        }
+    })
+
+</script>
+</html>
